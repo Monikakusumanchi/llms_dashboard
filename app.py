@@ -4,9 +4,11 @@ import plotly.express as px
 import time
 import os
 from dotenv import load_dotenv
-from langchain_experimental.agents import create_pandas_dataframe_agent
-from langchain.llms import OpenAI
+from langchain.utilities import SQLDatabase
 from langchain.agents.agent_types import AgentType
+from langchain.agents.agent_toolkits import SQLDatabaseToolkit
+from langchain_openai import OpenAI
+from langchain.agents import create_sql_agent
 
 # Function to load data from a CSV file
 def load_data(data):
@@ -37,12 +39,14 @@ def about_page():
 def ask_llm_page():
     load_dotenv()  # Load environment variables
 
-    # Initialize LLM with API key from environment variables
+    db = SQLDatabase.from_uri('sqlite:///llm_database.db')
+
+    # choose llm model, in this case the default OpenAI model
     llm = OpenAI(
-        temperature=0,
-        verbose=True,
-        openai_api_key=os.getenv("GHTvgvbjnkml,poijhgvfcdxcfgvbhnjmkjhgftdsfghujn"),
-    )
+                temperature=0,
+                verbose=True,
+                openai_api_key=os.getenv("OPENAI_API_KEY"),
+                )
 
     # Streamlit app interface
     st.title("LLM Agent Bot")
@@ -54,10 +58,11 @@ def ask_llm_page():
     user_question = st.text_input("Ask a question about the data:")
 
     if user_question:
-        # Create the agent with the DataFrame and LLM
-        agent_executor = create_pandas_dataframe_agent(
+        # setup agent
+        toolkit = SQLDatabaseToolkit(db=db, llm=llm)
+        agent_executor = create_sql_agent(
             llm=llm,
-            df=df,
+            toolkit=toolkit,
             verbose=True,
             agent_type=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
         )
